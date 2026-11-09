@@ -1,0 +1,255 @@
+{
+  "machine": {
+    "cpu": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+    "system": "Windows-11-10.0.26300-SP0",
+    "threads": 1,
+    "batch": 1,
+    "runs": 1000,
+    "warmup": 50
+  },
+  "results": {
+    "onnx-int8 (fp32 kalibrasyonu)": {
+      "test_coverage_90": {
+        "h1": 0.9625,
+        "h6": 0.9545138888888889,
+        "h24": 0.9694444444444444
+      },
+      "alarm_test": {
+        "false_per_week": 0.4666666666666667,
+        "kademeli_1": {
+          "detection_rate": 0.2,
+          "median_delay_h": 34.0
+        },
+        "kademeli_2": {
+          "detection_rate": 0.375,
+          "median_delay_h": 23.0
+        },
+        "kademeli_3": {
+          "detection_rate": 0.55,
+          "median_delay_h": 18.0
+        },
+        "kademeli_5": {
+          "detection_rate": 0.95,
+          "median_delay_h": 14.0
+        },
+        "ani_1": {
+          "detection_rate": 0.3,
+          "median_delay_h": 25.0
+        },
+        "ani_2": {
+          "detection_rate": 0.425,
+          "median_delay_h": 8.0
+        },
+        "ani_3": {
+          "detection_rate": 0.7,
+          "median_delay_h": 6.0
+        },
+        "ani_5": {
+          "detection_rate": 1.0,
+          "median_delay_h": 4.0
+        }
+      }
+    },
+    "torch": {
+      "size_kb": 64.2,
+      "test_mae": {
+        "h1": 0.4256334900856018,
+        "h6": 1.1494348049163818,
+        "h24": 1.5219244956970215
+      },
+      "test_coverage_90": {
+        "h1": 0.9621527777777777,
+        "h6": 0.9527777777777777,
+        "h24": 0.9715277777777778
+      },
+      "latency_cpu_1thread": {
+        "median_ms": 0.5700000037904829,
+        "p95_ms": 0.6237050052732229
+      },
+      "alarm_test": {
+        "false_per_week": 0.9916666666666667,
+        "kademeli_1": {
+          "detection_rate": 0.475,
+          "median_delay_h": 31.0
+        },
+        "kademeli_2": {
+          "detection_rate": 0.55,
+          "median_delay_h": 22.5
+        },
+        "kademeli_3": {
+          "detection_rate": 0.75,
+          "median_delay_h": 18.0
+        },
+        "kademeli_5": {
+          "detection_rate": 0.975,
+          "median_delay_h": 13.0
+        },
+        "ani_1": {
+          "detection_rate": 0.45,
+          "median_delay_h": 24.0
+        },
+        "ani_2": {
+          "detection_rate": 0.575,
+          "median_delay_h": 7.0
+        },
+        "ani_3": {
+          "detection_rate": 0.725,
+          "median_delay_h": 5.0
+        },
+        "ani_5": {
+          "detection_rate": 1.0,
+          "median_delay_h": 3.5
+        }
+      }
+    },
+    "onnx": {
+      "size_kb": 65.4,
+      "test_mae": {
+        "h1": 0.4256334900856018,
+        "h6": 1.1494346857070923,
+        "h24": 1.5219244956970215
+      },
+      "test_coverage_90": {
+        "h1": 0.9621527777777777,
+        "h6": 0.9527777777777777,
+        "h24": 0.9715277777777778
+      },
+      "latency_cpu_1thread": {
+        "median_ms": 0.20219999714754522,
+        "p95_ms": 0.2200100148911588
+      },
+      "alarm_test": {
+        "false_per_week": 0.9916666666666667,
+        "kademeli_1": {
+          "detection_rate": 0.475,
+          "median_delay_h": 31.0
+        },
+        "kademeli_2": {
+          "detection_rate": 0.55,
+          "median_delay_h": 22.5
+        },
+        "kademeli_3": {
+          "detection_rate": 0.75,
+          "median_delay_h": 18.0
+        },
+        "kademeli_5": {
+          "detection_rate": 0.975,
+          "median_delay_h": 13.0
+        },
+        "ani_1": {
+          "detection_rate": 0.45,
+          "median_delay_h": 24.0
+        },
+        "ani_2": {
+          "detection_rate": 0.575,
+          "median_delay_h": 7.0
+        },
+        "ani_3": {
+          "detection_rate": 0.725,
+          "median_delay_h": 5.0
+        },
+        "ani_5": {
+          "detection_rate": 1.0,
+          "median_delay_h": 3.5
+        }
+      },
+      "max_abs_diff_vs_torch_scaled": 2.384185791015625e-07
+    },
+    "onnx-int8": {
+      "size_kb": 26.0,
+      "test_mae": {
+        "h1": 0.4229716956615448,
+        "h6": 1.091766595840454,
+        "h24": 1.5218342542648315
+      },
+      "test_coverage_90": {
+        "h1": 0.9625,
+        "h6": 0.9590277777777778,
+        "h24": 0.9753472222222223
+      },
+      "latency_cpu_1thread": {
+        "median_ms": 0.23030000738799572,
+        "p95_ms": 0.24809999886201695
+      },
+      "alarm_test": {
+        "false_per_week": 0.35000000000000003,
+        "kademeli_1": {
+          "detection_rate": 0.15,
+          "median_delay_h": 34.0
+        },
+        "kademeli_2": {
+          "detection_rate": 0.35,
+          "median_delay_h": 28.0
+        },
+        "kademeli_3": {
+          "detection_rate": 0.5,
+          "median_delay_h": 17.0
+        },
+        "kademeli_5": {
+          "detection_rate": 0.925,
+          "median_delay_h": 15.0
+        },
+        "ani_1": {
+          "detection_rate": 0.225,
+          "median_delay_h": 25.0
+        },
+        "ani_2": {
+          "detection_rate": 0.375,
+          "median_delay_h": 8.0
+        },
+        "ani_3": {
+          "detection_rate": 0.65,
+          "median_delay_h": 6.0
+        },
+        "ani_5": {
+          "detection_rate": 1.0,
+          "median_delay_h": 4.0
+        }
+      },
+      "max_abs_diff_vs_torch_scaled": 0.1515381932258606
+    },
+    "onnx-int8 (kural val'de yeniden seçildi)": {
+      "alarm_rule": {
+        "kind": "cusum",
+        "k": 0.25,
+        "H": 16
+      },
+      "horizon_h": 24,
+      "alarm_test": {
+        "false_per_week": 0.4666666666666667,
+        "kademeli_1": {
+          "detection_rate": 0.325,
+          "median_delay_h": 40.0
+        },
+        "kademeli_2": {
+          "detection_rate": 0.525,
+          "median_delay_h": 32.0
+        },
+        "kademeli_3": {
+          "detection_rate": 0.75,
+          "median_delay_h": 25.0
+        },
+        "kademeli_5": {
+          "detection_rate": 0.975,
+          "median_delay_h": 21.0
+        },
+        "ani_1": {
+          "detection_rate": 0.2,
+          "median_delay_h": 14.0
+        },
+        "ani_2": {
+          "detection_rate": 0.425,
+          "median_delay_h": 22.0
+        },
+        "ani_3": {
+          "detection_rate": 0.7,
+          "median_delay_h": 17.5
+        },
+        "ani_5": {
+          "detection_rate": 0.95,
+          "median_delay_h": 9.0
+        }
+      }
+    }
+  }
+}

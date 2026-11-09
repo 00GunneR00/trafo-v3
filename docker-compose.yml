@@ -1,0 +1,14 @@
+# docker compose up --build  ->  panel: http://localhost:3000, API: http://localhost:8000/docs
+services:
+  api:
+    build: .
+    ports: ["8000:8000"]
+  panel:
+    build:
+      context: ./panel
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000   # tarayıcı API'ye doğrudan bağlanır
+    ports: ["3000:3000"]
+    depends_on:
+      api:
+        condition: service_healthy

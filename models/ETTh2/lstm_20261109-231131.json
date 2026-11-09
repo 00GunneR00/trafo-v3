@@ -1,0 +1,501 @@
+{
+  "dataset": "ETTh2",
+  "version": "20261109-231131",
+  "file": "lstm_20261109-231131.pt",
+  "run_name": "ETTh2_lstm_s0",
+  "mlflow_run_id": "c08d8661d20648258c371618f856c91a",
+  "seed": 0,
+  "target": "delta",
+  "relative_input": true,
+  "hidden": 32,
+  "layers": 2,
+  "dropout": 0.3,
+  "n_features": 11,
+  "window": 168,
+  "horizons": [
+    1,
+    6,
+    24
+  ],
+  "quantiles": [
+    0.05,
+    0.5,
+    0.95
+  ],
+  "scaler": {
+    "mean": {
+      "HUFL": 41.53683496078959,
+      "HULL": 12.273452896210882,
+      "MUFL": 46.60977329964991,
+      "MULL": 10.526153112865156,
+      "LUFL": 1.1869920139097505,
+      "LULL": -2.373217913729173,
+      "OT": 26.872023494265697
+    },
+    "std": {
+      "HUFL": 10.449445803385798,
+      "HULL": 4.587378047480558,
+      "MUFL": 16.859166007011506,
+      "MULL": 3.0187802696704007,
+      "LUFL": 4.64127981767333,
+      "LULL": 8.46140045782734,
+      "OT": 11.585389393590514
+    }
+  },
+  "test_metrics": {
+    "test_mae_h1": 0.6012479066848755,
+    "test_rmse_h1": 0.784471869468689,
+    "test_mae_h6": 2.630307912826538,
+    "test_rmse_h6": 3.5233635902404785,
+    "test_mae_h24": 2.7281100749969482,
+    "test_rmse_h24": 3.580773115158081,
+    "test_coverage_h1": 0.9740987049352468,
+    "test_width_h1": 3.4024696350097656,
+    "test_coverage_h6": 0.9506475323766188,
+    "test_width_h6": 13.227395057678223,
+    "test_coverage_h24": 0.9712985649282464,
+    "test_width_h24": 17.494325637817383
+  },
+  "calibration": {
+    "interval": {
+      "h1": -0.17598342895507812,
+      "h6": -0.7557353973388672,
+      "h24": -0.6062469482421875
+    },
+    "alarm": {
+      "h1": 0.3233509063720703,
+      "h6": 1.272409439086914,
+      "h24": 1.0527763366699219
+    }
+  },
+  "calibration_report": {
+    "before": {
+      "val": {
+        "h1": {
+          "coverage_90": 0.9368055555555556,
+          "width_90": 2.960064649581909,
+          "below_alarm_bound": 0.9621527777777777
+        },
+        "h6": {
+          "coverage_90": 0.9447916666666667,
+          "width_90": 11.218109130859375,
+          "below_alarm_bound": 0.9684027777777777
+        },
+        "h24": {
+          "coverage_90": 0.9253472222222222,
+          "width_90": 14.796106338500977,
+          "below_alarm_bound": 0.9715277777777778
+        }
+      },
+      "test": {
+        "h1": {
+          "coverage_90": 0.9732638888888889,
+          "width_90": 3.3971924781799316,
+          "below_alarm_bound": 0.9795138888888889
+        },
+        "h6": {
+          "coverage_90": 0.9506944444444444,
+          "width_90": 13.208786010742188,
+          "below_alarm_bound": 0.9534722222222223
+        },
+        "h24": {
+          "coverage_90": 0.9715277777777778,
+          "width_90": 17.48936653137207,
+          "below_alarm_bound": 0.978125
+        }
+      }
+    },
+    "after": {
+      "val": {
+        "h1": {
+          "coverage_90": 0.9006944444444445,
+          "width_90": 2.608097791671753,
+          "below_alarm_bound": 0.9909722222222223
+        },
+        "h6": {
+          "coverage_90": 0.9006944444444445,
+          "width_90": 9.70663833618164,
+          "below_alarm_bound": 0.9909722222222223
+        },
+        "h24": {
+          "coverage_90": 0.9006944444444445,
+          "width_90": 13.583612442016602,
+          "below_alarm_bound": 0.9909722222222223
+        }
+      },
+      "test": {
+        "h1": {
+          "coverage_90": 0.9295138888888889,
+          "width_90": 3.0452256202697754,
+          "below_alarm_bound": 0.9975694444444444
+        },
+        "h6": {
+          "coverage_90": 0.9055555555555556,
+          "width_90": 11.697314262390137,
+          "below_alarm_bound": 0.9888888888888889
+        },
+        "h24": {
+          "coverage_90": 0.9583333333333334,
+          "width_90": 16.276872634887695,
+          "below_alarm_bound": 0.9871527777777778
+        }
+      }
+    }
+  },
+  "alarm_rule": {
+    "kind": "cusum",
+    "k": 0.25,
+    "H": 24,
+    "horizon_h": 6,
+    "test": {
+      "false_per_week": 0.7583333333333333,
+      "kademeli_1": {
+        "detection_rate": 0.3,
+        "median_delay_h": 46.5
+      },
+      "kademeli_2": {
+        "detection_rate": 0.4,
+        "median_delay_h": 24.0
+      },
+      "kademeli_3": {
+        "detection_rate": 0.325,
+        "median_delay_h": 16.0
+      },
+      "kademeli_5": {
+        "detection_rate": 0.45,
+        "median_delay_h": 28.5
+      },
+      "ani_1": {
+        "detection_rate": 0.25,
+        "median_delay_h": 38.5
+      },
+      "ani_2": {
+        "detection_rate": 0.3,
+        "median_delay_h": 48.0
+      },
+      "ani_3": {
+        "detection_rate": 0.5,
+        "median_delay_h": 23.0
+      },
+      "ani_5": {
+        "detection_rate": 0.7,
+        "median_delay_h": 19.0
+      }
+    }
+  },
+  "edge": {
+    "onnx_fp32": {
+      "file": "lstm_20261109-231131.onnx",
+      "size_kb": 65.4,
+      "test_mae": {
+        "h1": 0.6028698682785034,
+        "h6": 2.6337313652038574,
+        "h24": 2.731595993041992
+      },
+      "test_coverage_90": {
+        "h1": 0.9295138888888889,
+        "h6": 0.9055555555555556,
+        "h24": 0.9583333333333334
+      },
+      "latency_cpu_1thread": {
+        "median_ms": 0.20280000171624124,
+        "p95_ms": 0.2162099874112755
+      },
+      "alarm_test": {
+        "false_per_week": 0.7583333333333333,
+        "kademeli_1": {
+          "detection_rate": 0.3,
+          "median_delay_h": 46.5
+        },
+        "kademeli_2": {
+          "detection_rate": 0.4,
+          "median_delay_h": 24.0
+        },
+        "kademeli_3": {
+          "detection_rate": 0.325,
+          "median_delay_h": 16.0
+        },
+        "kademeli_5": {
+          "detection_rate": 0.45,
+          "median_delay_h": 28.5
+        },
+        "ani_1": {
+          "detection_rate": 0.25,
+          "median_delay_h": 38.5
+        },
+        "ani_2": {
+          "detection_rate": 0.3,
+          "median_delay_h": 48.0
+        },
+        "ani_3": {
+          "detection_rate": 0.5,
+          "median_delay_h": 23.0
+        },
+        "ani_5": {
+          "detection_rate": 0.7,
+          "median_delay_h": 19.0
+        }
+      },
+      "max_abs_diff_vs_torch_scaled": 8.344650268554688e-07
+    },
+    "onnx_int8": {
+      "file": "lstm_20261109-231131.int8.onnx",
+      "calibration": {
+        "interval": {
+          "h1": -0.16171646118164062,
+          "h6": -0.7832260131835938,
+          "h24": -0.6072158813476562
+        },
+        "alarm": {
+          "h1": 0.3440055847167969,
+          "h6": 1.2301521301269531,
+          "h24": 1.0444564819335938
+        }
+      },
+      "size_kb": 26.0,
+      "test_mae": {
+        "h1": 0.600893497467041,
+        "h6": 2.6228795051574707,
+        "h24": 2.7271904945373535
+      },
+      "test_coverage_90": {
+        "h1": 0.93125,
+        "h6": 0.9055555555555556,
+        "h24": 0.9579861111111111
+      },
+      "latency_cpu_1thread": {
+        "median_ms": 0.22909999825060368,
+        "p95_ms": 0.24261498474515975
+      },
+      "alarm_test": {
+        "false_per_week": 0.7000000000000001,
+        "kademeli_1": {
+          "detection_rate": 0.3,
+          "median_delay_h": 46.5
+        },
+        "kademeli_2": {
+          "detection_rate": 0.425,
+          "median_delay_h": 25.0
+        },
+        "kademeli_3": {
+          "detection_rate": 0.325,
+          "median_delay_h": 16.0
+        },
+        "kademeli_5": {
+          "detection_rate": 0.45,
+          "median_delay_h": 29.5
+        },
+        "ani_1": {
+          "detection_rate": 0.25,
+          "median_delay_h": 37.5
+        },
+        "ani_2": {
+          "detection_rate": 0.35,
+          "median_delay_h": 47.0
+        },
+        "ani_3": {
+          "detection_rate": 0.55,
+          "median_delay_h": 26.5
+        },
+        "ani_5": {
+          "detection_rate": 0.7,
+          "median_delay_h": 18.5
+        }
+      },
+      "max_abs_diff_vs_torch_scaled": 0.045410752296447754,
+      "with_fp32_calibration": {
+        "test_coverage_90": {
+          "h1": 0.9260416666666667,
+          "h6": 0.9076388888888889,
+          "h24": 0.9579861111111111
+        },
+        "alarm_test": {
+          "false_per_week": 0.7000000000000001,
+          "kademeli_1": {
+            "detection_rate": 0.3,
+            "median_delay_h": 47.0
+          },
+          "kademeli_2": {
+            "detection_rate": 0.425,
+            "median_delay_h": 25.0
+          },
+          "kademeli_3": {
+            "detection_rate": 0.325,
+            "median_delay_h": 16.0
+          },
+          "kademeli_5": {
+            "detection_rate": 0.45,
+            "median_delay_h": 29.5
+          },
+          "ani_1": {
+            "detection_rate": 0.275,
+            "median_delay_h": 35.0
+          },
+          "ani_2": {
+            "detection_rate": 0.325,
+            "median_delay_h": 40.0
+          },
+          "ani_3": {
+            "detection_rate": 0.525,
+            "median_delay_h": 26.0
+          },
+          "ani_5": {
+            "detection_rate": 0.7,
+            "median_delay_h": 19.0
+          }
+        }
+      },
+      "alarm_rule_reselected": {
+        "kind": "cusum",
+        "k": 0.25,
+        "H": 24,
+        "horizon_h": 6,
+        "test": {
+          "false_per_week": 0.7000000000000001,
+          "kademeli_1": {
+            "detection_rate": 0.3,
+            "median_delay_h": 46.5
+          },
+          "kademeli_2": {
+            "detection_rate": 0.425,
+            "median_delay_h": 25.0
+          },
+          "kademeli_3": {
+            "detection_rate": 0.325,
+            "median_delay_h": 16.0
+          },
+          "kademeli_5": {
+            "detection_rate": 0.45,
+            "median_delay_h": 29.5
+          },
+          "ani_1": {
+            "detection_rate": 0.25,
+            "median_delay_h": 37.5
+          },
+          "ani_2": {
+            "detection_rate": 0.35,
+            "median_delay_h": 47.0
+          },
+          "ani_3": {
+            "detection_rate": 0.55,
+            "median_delay_h": 26.5
+          },
+          "ani_5": {
+            "detection_rate": 0.7,
+            "median_delay_h": 18.5
+          }
+        }
+      }
+    },
+    "torch_cpu": {
+      "size_kb": 64.2,
+      "test_mae": {
+        "h1": 0.6028698682785034,
+        "h6": 2.6337313652038574,
+        "h24": 2.731595993041992
+      },
+      "test_coverage_90": {
+        "h1": 0.9295138888888889,
+        "h6": 0.9055555555555556,
+        "h24": 0.9583333333333334
+      },
+      "latency_cpu_1thread": {
+        "median_ms": 0.5859000084456056,
+        "p95_ms": 0.6318450075923465
+      },
+      "alarm_test": {
+        "false_per_week": 0.7583333333333333,
+        "kademeli_1": {
+          "detection_rate": 0.3,
+          "median_delay_h": 46.5
+        },
+        "kademeli_2": {
+          "detection_rate": 0.4,
+          "median_delay_h": 24.0
+        },
+        "kademeli_3": {
+          "detection_rate": 0.325,
+          "median_delay_h": 16.0
+        },
+        "kademeli_5": {
+          "detection_rate": 0.45,
+          "median_delay_h": 28.5
+        },
+        "ani_1": {
+          "detection_rate": 0.25,
+          "median_delay_h": 38.5
+        },
+        "ani_2": {
+          "detection_rate": 0.3,
+          "median_delay_h": 48.0
+        },
+        "ani_3": {
+          "detection_rate": 0.5,
+          "median_delay_h": 23.0
+        },
+        "ani_5": {
+          "detection_rate": 0.7,
+          "median_delay_h": 19.0
+        }
+      }
+    },
+    "machine": {
+      "cpu": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+      "system": "Windows-11-10.0.26300-SP0",
+      "threads": 1,
+      "batch": 1,
+      "runs": 1000,
+      "warmup": 50
+    }
+  },
+  "monitoring": {
+    "thresholds": {
+      "coverage_min": 0.688,
+      "abs_bias_z_max": 0.702,
+      "load_shift_max": 1.911
+    },
+    "window_h": 168,
+    "horizon_h": 6,
+    "test_flag_rate": 0.0
+  },
+  "alarm_rule_fleet": {
+    "kind": "esik",
+    "n": 3,
+    "horizon_h": 24,
+    "test": {
+      "false_per_week": 0.2916666666666667,
+      "kademeli_1": {
+        "detection_rate": 0.1,
+        "median_delay_h": 50.5
+      },
+      "kademeli_2": {
+        "detection_rate": 0.175,
+        "median_delay_h": 25.0
+      },
+      "kademeli_3": {
+        "detection_rate": 0.2,
+        "median_delay_h": 39.5
+      },
+      "kademeli_5": {
+        "detection_rate": 0.35,
+        "median_delay_h": 30.0
+      },
+      "ani_1": {
+        "detection_rate": 0.05,
+        "median_delay_h": 60.5
+      },
+      "ani_2": {
+        "detection_rate": 0.1,
+        "median_delay_h": 15.0
+      },
+      "ani_3": {
+        "detection_rate": 0.275,
+        "median_delay_h": 23.0
+      },
+      "ani_5": {
+        "detection_rate": 0.55,
+        "median_delay_h": 14.5
+      }
+    }
+  }
+}

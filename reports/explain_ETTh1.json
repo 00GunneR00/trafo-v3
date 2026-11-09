@@ -1,0 +1,111 @@
+{
+  "dataset": "ETTh1",
+  "levels": {
+    "izlemede": {
+      "kind": "cusum",
+      "k": 0.5,
+      "H": 8,
+      "horizon_h": 6
+    },
+    "alarm": {
+      "kind": "cusum",
+      "k": 1.0,
+      "H": 12,
+      "horizon_h": 24
+    }
+  },
+  "load_z_high": 2.0,
+  "cases": {
+    "sogutma_3": {
+      "n": 40,
+      "izlemede": {
+        "rate_72h": 0.675,
+        "median_delay_h": 17.0
+      },
+      "alarm": {
+        "rate_72h": 0.1,
+        "median_delay_h": 23.5
+      },
+      "labels_at_first_warning": {
+        "sogutma_suphesi": 26,
+        "yuk_kaynakli": 1
+      }
+    },
+    "sogutma_5": {
+      "n": 40,
+      "izlemede": {
+        "rate_72h": 0.925,
+        "median_delay_h": 13.0
+      },
+      "alarm": {
+        "rate_72h": 0.55,
+        "median_delay_h": 24.5
+      },
+      "labels_at_first_warning": {
+        "sogutma_suphesi": 35,
+        "yuk_kaynakli": 2
+      }
+    },
+    "ani_5": {
+      "n": 40,
+      "izlemede": {
+        "rate_72h": 0.95,
+        "median_delay_h": 3.0
+      },
+      "alarm": {
+        "rate_72h": 0.8,
+        "median_delay_h": 12.0
+      },
+      "labels_at_first_warning": {
+        "sogutma_suphesi": 32,
+        "yuk_kaynakli": 6
+      }
+    },
+    "yuk_0.3": {
+      "n": 40,
+      "izlemede": {
+        "rate_72h": 0.375,
+        "median_delay_h": 29.0
+      },
+      "alarm": {
+        "rate_72h": 0.0,
+        "median_delay_h": null
+      },
+      "labels_at_first_warning": {
+        "sogutma_suphesi": 10,
+        "yuk_kaynakli": 5
+      }
+    },
+    "yuk_0.5": {
+      "n": 40,
+      "izlemede": {
+        "rate_72h": 0.425,
+        "median_delay_h": 29.0
+      },
+      "alarm": {
+        "rate_72h": 0.0,
+        "median_delay_h": null
+      },
+      "labels_at_first_warning": {
+        "sogutma_suphesi": 10,
+        "yuk_kaynakli": 7
+      }
+    },
+    "temiz_0": {
+      "n": 40,
+      "izlemede": {
+        "rate_72h": 0.375,
+        "median_delay_h": 29.0
+      },
+      "alarm": {
+        "rate_72h": 0.0,
+        "median_delay_h": null
+      },
+      "labels_at_first_warning": {
+        "sogutma_suphesi": 15,
+        "yuk_kaynakli": 0
+      }
+    }
+  },
+  "note": "yuk_* negatif kontroldür (arıza yok); temiz_0 aynı pencerelerde senaryosuz taban orandır. Oranlar 72 saatte en az bir uyarıyı sayar, taban oran dahil."
+}

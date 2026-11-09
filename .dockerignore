@@ -1,0 +1,8 @@
+panel
+data
+mlruns
+mlflow.db
+models/**/*.pt
+**/__pycache__
+.pytest_cache
+media

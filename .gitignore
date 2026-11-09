@@ -1,0 +1,13 @@
+# Veri depoda tutulmaz (CC BY-ND 4.0, kaynağından indirilir)
+data/
+mlruns/
+mlflow.db
+__pycache__/
+.pytest_cache/
+.venv/
+panel/node_modules/
+panel/.next/
+panel/tsconfig.tsbuildinfo
+panel/next-env.d.ts
+mobile_bench/build/
+mobile_bench/.dart_tool/

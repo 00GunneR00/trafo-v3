@@ -1,0 +1,167 @@
+{
+  "dataset": "ETTh2",
+  "model_version": "20261109-231131",
+  "chosen": {
+    "esik": {
+      "horizon_h": 24,
+      "rule": {
+        "kind": "esik",
+        "n": 3
+      },
+      "val": {
+        "false_per_week": 0.23333333333333334,
+        "kademeli_1": {
+          "detection_rate": 0.15,
+          "median_delay_h": 52.5
+        },
+        "kademeli_2": {
+          "detection_rate": 0.15,
+          "median_delay_h": 19.0
+        },
+        "kademeli_3": {
+          "detection_rate": 0.3,
+          "median_delay_h": 17.0
+        },
+        "kademeli_5": {
+          "detection_rate": 0.55,
+          "median_delay_h": 21.5
+        },
+        "ani_1": {
+          "detection_rate": 0.225,
+          "median_delay_h": 11.0
+        },
+        "ani_2": {
+          "detection_rate": 0.225,
+          "median_delay_h": 20.0
+        },
+        "ani_3": {
+          "detection_rate": 0.55,
+          "median_delay_h": 23.5
+        },
+        "ani_5": {
+          "detection_rate": 0.725,
+          "median_delay_h": 11.0
+        }
+      },
+      "test": {
+        "false_per_week": 0.2916666666666667,
+        "kademeli_1": {
+          "detection_rate": 0.1,
+          "median_delay_h": 50.5
+        },
+        "kademeli_2": {
+          "detection_rate": 0.175,
+          "median_delay_h": 25.0
+        },
+        "kademeli_3": {
+          "detection_rate": 0.2,
+          "median_delay_h": 39.5
+        },
+        "kademeli_5": {
+          "detection_rate": 0.35,
+          "median_delay_h": 30.0
+        },
+        "ani_1": {
+          "detection_rate": 0.05,
+          "median_delay_h": 60.5
+        },
+        "ani_2": {
+          "detection_rate": 0.1,
+          "median_delay_h": 15.0
+        },
+        "ani_3": {
+          "detection_rate": 0.275,
+          "median_delay_h": 23.0
+        },
+        "ani_5": {
+          "detection_rate": 0.55,
+          "median_delay_h": 14.5
+        }
+      }
+    },
+    "cusum": {
+      "horizon_h": 24,
+      "rule": {
+        "kind": "cusum",
+        "k": 1.0,
+        "H": 8
+      },
+      "val": {
+        "false_per_week": 0.23333333333333334,
+        "kademeli_1": {
+          "detection_rate": 0.1,
+          "median_delay_h": 56.0
+        },
+        "kademeli_2": {
+          "detection_rate": 0.2,
+          "median_delay_h": 27.0
+        },
+        "kademeli_3": {
+          "detection_rate": 0.275,
+          "median_delay_h": 19.0
+        },
+        "kademeli_5": {
+          "detection_rate": 0.55,
+          "median_delay_h": 25.0
+        },
+        "ani_1": {
+          "detection_rate": 0.15,
+          "median_delay_h": 27.5
+        },
+        "ani_2": {
+          "detection_rate": 0.2,
+          "median_delay_h": 40.0
+        },
+        "ani_3": {
+          "detection_rate": 0.35,
+          "median_delay_h": 18.0
+        },
+        "ani_5": {
+          "detection_rate": 0.725,
+          "median_delay_h": 13.0
+        }
+      },
+      "test": {
+        "false_per_week": 0.17500000000000002,
+        "kademeli_1": {
+          "detection_rate": 0.05,
+          "median_delay_h": 65.5
+        },
+        "kademeli_2": {
+          "detection_rate": 0.1,
+          "median_delay_h": 23.0
+        },
+        "kademeli_3": {
+          "detection_rate": 0.125,
+          "median_delay_h": 22.0
+        },
+        "kademeli_5": {
+          "detection_rate": 0.325,
+          "median_delay_h": 35.0
+        },
+        "ani_1": {
+          "detection_rate": 0.025,
+          "median_delay_h": 63.0
+        },
+        "ani_2": {
+          "detection_rate": 0.075,
+          "median_delay_h": 19.0
+        },
+        "ani_3": {
+          "detection_rate": 0.2,
+          "median_delay_h": 29.0
+        },
+        "ani_5": {
+          "detection_rate": 0.4,
+          "median_delay_h": 19.5
+        }
+      }
+    }
+  },
+  "production_rule": "esik",
+  "selection": {
+    "max_false_per_week": 0.25,
+    "target": "kademeli_3",
+    "note": "seçim val'de, rapor test'te"
+  }
+}
