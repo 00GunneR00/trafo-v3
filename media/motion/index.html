@@ -1,0 +1,533 @@
+<meta charset="utf-8">
+<title>Trafo Filo İzleme · Nasıl Çalışır</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: tek sahne (16:9 tuval) + altta oynatma çubuğu. Tek koyu görünüm: kontrol odası ekranı. */
+:root {
+  --ink: #0b111c;        /* zemin: kontrol odası */
+  --panel: #121a28;
+  --line: #24314a;
+  --text: #e8edf5;
+  --mute: #8a97ad;
+  --oil: #f2efe6;        /* ölçülen yağ sıcaklığı */
+  --model: #5b9cff;      /* beklenen + aralık */
+  --ok: #3fcf8e;
+  --warn: #f6b93b;
+  --alarm: #ff5b4f;
+  --f-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { background: var(--ink); color: var(--text); }
+body {
+  font-family: var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 28px;
+}
+.wrap { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.stage { position: relative; width: 100%; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); background: var(--ink); }
+canvas { display: block; width: 100%; height: 100%; }
+.bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+button {
+  font: 500 14px/1 var(--f-body); color: var(--text); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 6px; padding: 9px 14px; cursor: pointer;
+}
+button:hover { border-color: var(--model); }
+button:focus-visible { outline: 2px solid var(--model); outline-offset: 2px; }
+#play { min-width: 92px; background: var(--model); border-color: var(--model); color: #06101f; font-weight: 600; }
+.scenes { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 0; }
+.scenes button { padding: 7px 10px; font-size: 12.5px; color: var(--mute); }
+.scenes button[aria-current="true"] { color: var(--text); border-color: var(--model); }
+.track { position: relative; height: 6px; background: var(--panel); border-radius: 3px; cursor: pointer; }
+.track span { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--model); border-radius: 3px; }
+.time { font: 12.5px var(--f-mono); color: var(--mute); font-variant-numeric: tabular-nums; }
+.note { font-size: 12.5px; color: var(--mute); max-width: 75ch; line-height: 1.5; }
+</style>
+
+<div class="wrap">
+  <div class="stage"><canvas id="c" width="1600" height="900" aria-label="Trafo Filo İzleme sisteminin nasıl çalıştığını anlatan animasyon"></canvas></div>
+  <div class="track" id="track" role="slider" aria-label="Animasyon konumu" tabindex="0"><span id="fill"></span></div>
+  <div class="bar">
+    <button id="play">Durdur</button>
+    <div class="scenes" id="scenes"></div>
+    <span class="time" id="time">0:00 / 0:00</span>
+  </div>
+  <p class="note">Boşluk: oynat/durdur · ← →: sahne. Eğriler temsilîdir; sayılar projenin test ölçümlerinden alınmıştır (ETDataset, son 4 ay). Filo bir simülasyondur, arızalar yapay olarak eklenir.</p>
+</div>
+
+<script>
+const W = 1600, H = 900;
+const C = {
+  ink: "#0b111c", panel: "#121a28", line: "#24314a", grid: "#1a2436", text: "#e8edf5", mute: "#8a97ad",
+  oil: "#f2efe6", model: "#5b9cff", ok: "#3fcf8e", warn: "#f6b93b", alarm: "#ff5b4f",
+};
+const F = { d: '"Archivo", "Arial Narrow", sans-serif', b: '"IBM Plex Sans", "Segoe UI", sans-serif', m: '"IBM Plex Mono", Consolas, monospace' };
+
+const cv = document.getElementById("c");
+const ctx = cv.getContext("2d");
+const dpr = Math.min(2, window.devicePixelRatio || 1);
+cv.width = W * dpr; cv.height = H * dpr; ctx.scale(dpr, dpr);
+
+// ---------- yardımcılar ----------
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = (t) => (t = clamp(t), t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const es = (t, a, b) => ease(seg(t, a, b));
+
+function txt(s, x, y, o = {}) {
+  ctx.save();
+  ctx.globalAlpha *= o.alpha ?? 1;
+  ctx.fillStyle = o.color || C.text;
+  ctx.font = `${o.weight || 400} ${o.size || 24}px ${o.font || F.b}`;
+  ctx.textAlign = o.align || "left";
+  ctx.textBaseline = o.base || "alphabetic";
+  if (o.spacing) ctx.letterSpacing = o.spacing + "px";
+  ctx.fillText(s, x, y);
+  ctx.restore();
+}
+function wrap(s, x, y, maxW, o = {}) {
+  ctx.save();
+  ctx.font = `${o.weight || 400} ${o.size || 24}px ${o.font || F.b}`;
+  const words = s.split(" "); let line = "", yy = y; const lh = (o.size || 24) * (o.lh || 1.35);
+  for (const w of words) {
+    const test = line ? line + " " + w : w;
+    if (ctx.measureText(test).width > maxW && line) { txt(line, x, yy, o); line = w; yy += lh; } else line = test;
+  }
+  txt(line, x, yy, o); ctx.restore();
+  return yy + lh;
+}
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+function pill(label, x, y, color, a = 1, size = 22) {
+  if (a <= 0) return;
+  ctx.save(); ctx.globalAlpha *= a;
+  ctx.font = `600 ${size}px ${F.b}`;
+  const w = ctx.measureText(label).width + size * 1.4, h = size * 1.75;
+  rr(x, y - h / 2, w, h, h / 2); ctx.fillStyle = color + "26"; ctx.fill();
+  ctx.lineWidth = 1.5; ctx.strokeStyle = color; ctx.stroke();
+  ctx.fillStyle = color; ctx.textBaseline = "middle"; ctx.fillText(label, x + size * 0.7, y + 1);
+  ctx.restore();
+  return w;
+}
+function arrow(x1, y1, x2, y2, color, p = 1, w = 2.5) {
+  if (p <= 0) return;
+  const x = lerp(x1, x2, p), y = lerp(y1, y2, p);
+  ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = w;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x, y); ctx.stroke();
+  const a = Math.atan2(y2 - y1, x2 - x1);
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 14 * Math.cos(a - 0.4), y - 14 * Math.sin(a - 0.4));
+  ctx.lineTo(x - 14 * Math.cos(a + 0.4), y - 14 * Math.sin(a + 0.4)); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// Temsilî seriler (günlük döngü + yavaş dalgalanma). Gerçek veri değil.
+const base = (h) => 31 + 5.2 * Math.sin(2 * Math.PI * (h - 9) / 24) + 1.6 * Math.sin(2 * Math.PI * h / 61 + 1) + 0.7 * Math.sin(h * 0.83 + 2) + 0.35 * Math.sin(h * 2.1);
+const expect = (h) => base(h) + 0.55 * Math.sin(h * 0.37 + 1.3);
+const load = (h) => 52 + 17 * Math.sin(2 * Math.PI * (h - 8) / 24) + 4 * Math.sin(2 * Math.PI * h / 37) + 1.5 * Math.sin(h * 1.3);
+const ramp = (h, start, mag, rampH) => (h < start ? 0 : mag * Math.min(1, (h - start + 1) / rampH));
+
+function chart(x, y, w, h, x0, x1, y0, y1) {
+  const sx = (v) => x + ((v - x0) / (x1 - x0)) * w;
+  const sy = (v) => y + h - ((v - y0) / (y1 - y0)) * h;
+  return {
+    x, y, w, h, sx, sy,
+    grid(stepY, unit = "°C", xticks = [], a = 1) {
+      ctx.save(); ctx.globalAlpha *= a; ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
+      for (let v = Math.ceil(y0 / stepY) * stepY; v <= y1; v += stepY) {
+        ctx.beginPath(); ctx.moveTo(x, sy(v)); ctx.lineTo(x + w, sy(v)); ctx.stroke();
+        txt(`${v}${unit}`, x - 12, sy(v) + 6, { size: 17, font: F.m, color: C.mute, align: "right" });
+      }
+      for (const [v, label] of xticks) txt(label, sx(v), y + h + 30, { size: 17, font: F.m, color: C.mute, align: "center" });
+      ctx.restore();
+    },
+    line(f, a, b, color, width = 3, dash = null) {
+      if (b <= a) return;
+      ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineJoin = "round"; if (dash) ctx.setLineDash(dash);
+      ctx.beginPath();
+      for (let v = a; v <= b + 1e-6; v += 0.5) { const px = sx(v), py = sy(f(v)); v === a ? ctx.moveTo(px, py) : ctx.lineTo(px, py); }
+      ctx.stroke(); ctx.restore();
+    },
+    band(lo, hi, a, b, color, alpha = 0.2) {
+      if (b <= a) return;
+      ctx.save(); ctx.fillStyle = color; ctx.globalAlpha *= alpha; ctx.beginPath();
+      for (let v = a; v <= b + 1e-6; v += 0.5) { const px = sx(v), py = sy(hi(v)); v === a ? ctx.moveTo(px, py) : ctx.lineTo(px, py); }
+      for (let v = b; v >= a - 1e-6; v -= 0.5) ctx.lineTo(sx(v), sy(lo(v)));
+      ctx.closePath(); ctx.fill(); ctx.restore();
+    },
+  };
+}
+
+function header(n, title, sub, a) {
+  txt(`${String(n).padStart(2, "0")} / 09`, 80, 92, { size: 18, font: F.m, color: C.model, alpha: a, spacing: 1 });
+  txt(title, 80, 150, { size: 52, font: F.d, weight: 700, alpha: a });
+  if (sub) txt(sub, 80, 192, { size: 24, color: C.mute, alpha: a });
+}
+function caption(s, a, y = 820, color = C.text, size = 30) {
+  if (a <= 0) return;
+  ctx.save(); ctx.globalAlpha *= a;
+  const off = (1 - a) * 12;
+  wrap(s, 80, y + off, 1300, { size, weight: 500, color });
+  ctx.restore();
+}
+function stat(big, small, x, y, color, a) {
+  if (a <= 0) return;
+  txt(big, x, y, { size: 64, font: F.d, weight: 800, color, alpha: a });
+  wrap(small, x, y + 38, 320, { size: 20, color: C.mute, alpha: a });
+}
+
+// ---------- sahneler ----------
+const scenes = [
+  {
+    name: "Sorun", dur: 10, draw(t) {
+      header(1, "Sabit eşik geç kalır", "Yağ sıcaklığı yükle birlikte gün içinde iner, çıkar.", es(t, 0, 0.08));
+      const ch = chart(150, 250, 1300, 460, 0, 96, 20, 50);
+      ch.grid(10, "°C", [[0, "0 sa"], [24, "24"], [48, "48"], [72, "72"], [96, "96 sa"]], es(t, 0.02, 0.1));
+      const p = lerp(0, 96, es(t, 0.06, 0.62));
+      const fault = (h) => ramp(h, 50, 5, 24);
+      const thr = 45;
+      ctx.save(); ctx.setLineDash([10, 8]); ctx.strokeStyle = C.alarm; ctx.globalAlpha = es(t, 0.1, 0.18); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(ch.sx(0), ch.sy(thr)); ctx.lineTo(ch.sx(96), ch.sy(thr)); ctx.stroke(); ctx.restore();
+      txt("Sabit eşik 45 °C", ch.sx(96), ch.sy(thr) - 14, { size: 20, color: C.alarm, align: "right", font: F.m, alpha: es(t, 0.1, 0.18) });
+      const fa = es(t, 0.5, 0.6);
+      if (fa > 0) { ctx.save(); ctx.globalAlpha = fa * 0.12; ctx.fillStyle = C.warn; ctx.fillRect(ch.sx(50), ch.y, ch.sx(96) - ch.sx(50), ch.h); ctx.restore();
+        txt("Soğutma arızası başlıyor", ch.sx(50) + 12, ch.y + 30, { size: 20, color: C.warn, alpha: fa }); }
+      ch.line((h) => base(h) + fault(h), 0, p, C.oil, 3.5);
+      caption("Soğutma bozulunca sıcaklık 5 °C yükseliyor. Ama hiçbir an sabit eşiği geçmiyor.", es(t, 0.6, 0.7));
+      caption("Doğru soru şu: bu yükte, bu saatte kaç derece olmalıydı?", es(t, 0.8, 0.9), 868, C.model, 30);
+    },
+  },
+  {
+    name: "Tahmin", dur: 11, draw(t) {
+      header(2, "Model beklenen sıcaklığı tahmin eder", "Girdi son 7 gün, çıktı 1, 6 ve 24 saat sonrası.", es(t, 0, 0.08));
+      // girdi ızgarası: 11 özellik x 42 sütun (168 saat, 4'er saat)
+      const gx = 110, gy = 300, cw = 9, chh = 22, cols = 42, rows = 11;
+      const labels = ["HUFL", "HULL", "MUFL", "MULL", "LUFL", "LULL", "OT", "saat sin", "saat cos", "gün sin", "gün cos"];
+      const fill = es(t, 0.06, 0.4) * cols;
+      for (let r = 0; r < rows; r++) {
+        txt(labels[r], gx - 12, gy + r * chh + 16, { size: 14, font: F.m, color: r === 6 ? C.oil : C.mute, align: "right", alpha: es(t, 0.04, 0.12) });
+        for (let c = 0; c < cols; c++) {
+          if (c > fill) continue;
+          const h = c * 4;
+          const v = r < 6 ? (load(h + r * 3) - 30) / 45 : r === 6 ? (base(h) - 24) / 14 : 0.5 + 0.5 * Math.sin(h / (r < 9 ? 24 : 168) * 6.283 + (r % 2) * 1.57);
+          ctx.fillStyle = r === 6 ? C.oil : r < 6 ? C.model : C.mute;
+          ctx.globalAlpha = 0.15 + 0.75 * clamp(v);
+          ctx.fillRect(gx + c * cw, gy + r * chh, cw - 2, chh - 3);
+        }
+      }
+      ctx.globalAlpha = 1;
+      txt("168 saat × 11 özellik", gx, gy + rows * chh + 34, { size: 20, font: F.m, color: C.text, alpha: es(t, 0.3, 0.4) });
+      txt("6 yük ölçümü, yağ sıcaklığı, saat ve gün", gx, gy + rows * chh + 62, { size: 18, color: C.mute, alpha: es(t, 0.3, 0.4) });
+
+      arrow(510, 420, 640, 420, C.mute, es(t, 0.38, 0.46));
+      const ba = es(t, 0.42, 0.52);
+      ctx.save(); ctx.globalAlpha = ba; rr(650, 330, 300, 180, 12); ctx.fillStyle = C.panel; ctx.fill(); ctx.strokeStyle = C.model; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+      txt("LSTM", 800, 405, { size: 48, font: F.d, weight: 800, align: "center", alpha: ba });
+      txt("2 katman × 32", 800, 445, { size: 20, font: F.m, color: C.mute, align: "center", alpha: ba });
+      txt("15.561 parametre", 800, 475, { size: 20, font: F.m, color: C.mute, align: "center", alpha: ba });
+      // girdinin içinden akan nabız
+      const pulse = (t * 3) % 1;
+      if (ba > 0.9) { ctx.save(); ctx.fillStyle = C.model; ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.arc(lerp(520, 640, pulse), 420, 5, 0, 7); ctx.fill(); ctx.restore(); }
+
+      const outs = [["1 saat", 2.6], ["6 saat", 5.6], ["24 saat", 9.1]];
+      outs.forEach(([label, width], i) => {
+        const a = es(t, 0.55 + i * 0.07, 0.65 + i * 0.07);
+        const y = 330 + i * 105;
+        arrow(960, 420, 1080, y + 40, C.mute, a, 2);
+        txt(label, 1100, y + 30, { size: 22, weight: 600, alpha: a });
+        const cx = 1240, half = width * 8 * a;
+        ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = C.model + "40"; rr(cx - half, y + 14, half * 2, 36, 6); ctx.fill();
+        ctx.fillStyle = C.model; ctx.fillRect(cx - 1.5, y + 8, 3, 48);
+        ctx.restore();
+        txt(`%5`, cx - half - 8, y + 70, { size: 15, font: F.m, color: C.mute, align: "right", alpha: a });
+        txt(`%50`, cx, y + 76, { size: 15, font: F.m, color: C.model, align: "center", alpha: a });
+        txt(`%95`, cx + half + 8, y + 70, { size: 15, font: F.m, color: C.mute, alpha: a });
+      });
+      caption("Tek bir sayı değil, üç yüzdelik: en olası değer ve iki yanında bir aralık. Ufuk uzadıkça aralık genişler.", es(t, 0.8, 0.9));
+    },
+  },
+  {
+    name: "Aralık", dur: 9, draw(t) {
+      header(3, "Aralık ölçülerek ayarlanır", "Model hiç görmediği 4 aylık dönemde kalibre edildi (conformal yöntem).", es(t, 0, 0.08));
+      const ch = chart(150, 250, 900, 430, 0, 72, 20, 44);
+      ch.grid(5, "°C", [[0, "−72 sa"], [36, "−36"], [72, "şimdi"]], es(t, 0.02, 0.1));
+      const p = lerp(0, 72, es(t, 0.08, 0.6));
+      ch.band((h) => expect(h) - 2.8, (h) => expect(h) + 2.8, 0, p, C.model, 0.22);
+      ch.line(expect, 0, p, C.model, 2, [8, 6]);
+      ch.line(base, 0, p, C.oil, 3.5);
+      // içeride / dışarıda noktalar
+      let inside = 0, total = 0;
+      for (let h = 0; h <= p; h += 3) {
+        const v = base(h) + (h === 39 || h === 63 ? 3.4 : 0) * 0;
+        const out = Math.abs(base(h) - expect(h)) > 2.8 || h === 42 || h === 66;
+        total++; if (!out) inside++;
+        ctx.fillStyle = out ? C.warn : C.ok; ctx.beginPath(); ctx.arc(ch.sx(h), ch.sy(v), 4.5, 0, 7); ctx.fill();
+      }
+      const a = es(t, 0.15, 0.25);
+      txt("Gerçek değer aralığın içinde", 1120, 300, { size: 22, color: C.mute, alpha: a });
+      txt(`%${total ? Math.round((inside / total) * 100) : 0}`, 1120, 380, { size: 84, font: F.d, weight: 800, color: C.ok, alpha: a });
+      txt("bu örnekte", 1120, 412, { size: 18, color: C.mute, alpha: a });
+      const b = es(t, 0.62, 0.72);
+      txt("Test dönemi (son 4 ay), 6 saat:", 1120, 500, { size: 22, color: C.mute, alpha: b });
+      txt("%95 kapsama", 1120, 548, { size: 40, font: F.d, weight: 700, alpha: b });
+      txt("hedef %90 · genişlik 5,6 °C", 1120, 582, { size: 20, font: F.m, color: C.mute, alpha: b });
+      caption("Aralık güvenilir olunca, aralığın dışına çıkmak bir anlam taşır.", es(t, 0.78, 0.88));
+    },
+  },
+  {
+    name: "Uyarı", dur: 13, draw(t) {
+      header(4, "Tek saat değil, biriken sapma", "Her saat, ölçülen değer beklenenden ne kadar saptı? Sapmalar CUSUM ile toplanır.", es(t, 0, 0.08));
+      const F0 = 40;
+      const fault = (h) => ramp(h, F0, 3.2, 24);
+      const ch = chart(150, 240, 1300, 300, 0, 96, 22, 44);
+      ch.grid(5, "°C", [], es(t, 0.02, 0.1));
+      const p = lerp(0, 96, es(t, 0.06, 0.75));
+      ch.band((h) => expect(h) - 2.8, (h) => expect(h) + 2.8, 0, p, C.model, 0.2);
+      ch.line(expect, 0, p, C.model, 2, [8, 6]);
+      ch.line((h) => base(h) + fault(h), 0, p, C.oil, 3.5);
+      if (p > F0) txt("Yapay arıza: +3 °C, 24 saatte", ch.sx(F0), ch.y - 10, { size: 18, color: C.warn, font: F.m });
+      // CUSUM
+      const cu = chart(150, 600, 1300, 150, 0, 96, 0, 12);
+      ctx.save(); ctx.globalAlpha = es(t, 0.05, 0.12);
+      txt("CUSUM birikimi", 150, 585, { size: 18, color: C.mute, font: F.m });
+      ctx.setLineDash([8, 6]); ctx.strokeStyle = C.warn; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cu.sx(0), cu.sy(8)); ctx.lineTo(cu.sx(96), cu.sy(8)); ctx.stroke();
+      ctx.restore();
+      txt("eşik H = 8", cu.sx(96), cu.sy(8) - 10, { size: 17, color: C.warn, font: F.m, align: "right", alpha: es(t, 0.05, 0.12) });
+      let s = 0, warnAt = null, alarmAt = null;
+      for (let h = 0; h <= p; h += 1) {
+        const z = ((base(h) + fault(h)) - expect(h)) / 1.7;
+        s = Math.max(0, s + z - 0.5);
+        let fired = false;
+        if (s > 8) { fired = true; if (warnAt === null) warnAt = h; }
+        if (h >= F0 + 26 && alarmAt === null && warnAt !== null) alarmAt = h;
+        const col = C.model;
+        const bh = Math.min(12, s);
+        ctx.fillStyle = fired ? C.warn : col; ctx.globalAlpha = fired ? 1 : 0.55;
+        ctx.fillRect(cu.sx(h) - 4, cu.sy(bh), 8, cu.sy(0) - cu.sy(bh));
+        if (fired) s = 0;                   // CUSUM uyarıdan sonra sıfırlanır
+      }
+      ctx.globalAlpha = 1;
+      if (warnAt !== null) {
+        ctx.save(); ctx.strokeStyle = C.warn; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(ch.sx(warnAt), ch.y); ctx.lineTo(ch.sx(warnAt), cu.y + cu.h); ctx.stroke(); ctx.restore();
+        pill(`İzlemede · arızadan ${warnAt - F0} sa sonra`, ch.sx(warnAt) + 10, 220, C.warn, 1, 18);
+      }
+      if (alarmAt !== null && p >= alarmAt) pill("Alarm · filo kuralı", ch.sx(alarmAt) + 10, 268 + 290, C.alarm, es(t, 0.7, 0.75), 18);
+      const a = es(t, 0.8, 0.88);
+      ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = C.ink + "e6"; ctx.fillRect(0, 780, W, 120); ctx.restore();
+      stat("%75", "3 °C kademeli arızayı yakalar (ortanca 18 saatte)", 80, 840, C.warn, a);
+      stat("%100", "ani 5 °C arızayı yakalar (ortanca 3,5 saatte)", 480, 840, C.warn, a);
+      stat("0,99", "haftada yanlış uyarı, tek trafoda", 880, 840, C.text, a);
+    },
+  },
+  {
+    name: "Neden?", dur: 11, draw(t) {
+      header(5, "Uyarının nedeni sayılarla", "Isınma yükle açıklanıyor mu? Yük, önceki 7 günün aynı saatleriyle kıyaslanır.", es(t, 0, 0.08));
+      const panels = [
+        { x: 80, title: "Soğutma arızası", loadUp: 0, fault: 4, verdict: "Soğutma şüphesi", vcol: C.alarm, z: "−0,6 σ" },
+        { x: 830, title: "Yük artışı %50", loadUp: 0.5, fault: 0, verdict: "Uyarı yok: model bu ısınmayı bekliyor", vcol: C.ok, z: "+2,4 σ" },
+      ];
+      panels.forEach((P, i) => {
+        const a = es(t, 0.05 + i * 0.08, 0.15 + i * 0.08);
+        ctx.save(); ctx.globalAlpha = a; rr(P.x, 230, 690, 500, 14); ctx.fillStyle = C.panel; ctx.fill(); ctx.restore();
+        txt(P.title, P.x + 30, 280, { size: 30, font: F.d, weight: 700, alpha: a });
+        const ch = chart(P.x + 30, 320, 480, 250, 0, 48, 20, 48);
+        const p = lerp(0, 48, es(t, 0.15, 0.7));
+        const extra = (h) => ramp(h, 16, 1, 6);
+        const loadEffect = (h) => P.loadUp * 9 * extra(h);
+        const exp = (h) => expect(h) + loadEffect(h);
+        const meas = (h) => base(h) + loadEffect(h) + ramp(h, 16, P.fault, 8);
+        ch.band((h) => exp(h) - 2.8, (h) => exp(h) + 2.8, 0, p, C.model, 0.22 * a);
+        ch.line(exp, 0, p, C.model, 2, [8, 6]);
+        ch.line(meas, 0, p, C.oil, 3);
+        // yük göstergesi
+        const lx = P.x + 560, ly = 330, lh = 230;
+        txt("Yük", lx + 25, ly - 12, { size: 18, color: C.mute, align: "center", alpha: a });
+        ctx.save(); ctx.globalAlpha = a; rr(lx, ly, 50, lh, 6); ctx.fillStyle = C.ink; ctx.fill();
+        const level = 0.45 + P.loadUp * 0.8 * es(t, 0.3, 0.55);
+        ctx.fillStyle = P.loadUp ? C.warn : C.model; rr(lx, ly + lh * (1 - level), 50, lh * level, 6); ctx.fill();
+        ctx.strokeStyle = C.mute; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(lx - 8, ly + lh * 0.55); ctx.lineTo(lx + 58, ly + lh * 0.55); ctx.stroke();
+        ctx.restore();
+        txt(P.z, lx + 25, ly + lh + 30, { size: 20, font: F.m, align: "center", alpha: es(t, 0.5, 0.58), color: P.loadUp ? C.warn : C.text });
+        pill(P.verdict, P.x + 30, 680, P.vcol, es(t, 0.66, 0.74), 20);
+      });
+      caption("Yük artışında uyarı oranı senaryosuz taban oranla aynı kaldı: %43'e karşı %38. Arızalarda ise etiket büyük çoğunlukla “soğutma şüphesi”.", es(t, 0.8, 0.9), 795, C.text, 26);
+    },
+  },
+  {
+    name: "Filo", dur: 12, draw(t) {
+      header(6, "Filoda iki seviye", "8 trafo: tek eşikle panel ya sürekli kırmızı olur ya da küçük arızalar kaçar.", es(t, 0, 0.08));
+      // şematik harita
+      const mx = 80, my = 230, mw = 640, mh = 520;
+      ctx.save(); ctx.globalAlpha = es(t, 0.03, 0.1); rr(mx, my, mw, mh, 12); ctx.fillStyle = C.panel; ctx.fill();
+      ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
+      for (let i = 1; i < 10; i++) { ctx.beginPath(); ctx.moveTo(mx + i * mw / 10, my); ctx.lineTo(mx + i * mw / 10, my + mh); ctx.stroke(); ctx.beginPath(); ctx.moveTo(mx, my + i * mh / 10); ctx.lineTo(mx + mw, my + i * mh / 10); ctx.stroke(); }
+      ctx.restore();
+      const P = (x, y) => [mx + x / 100 * mw, my + y / 100 * mh];
+      const trs = [[18, 22], [42, 15], [75, 28], [85, 60], [60, 82], [30, 75], [12, 50], [50, 48]];
+      const teams = [[25, 35, "Ekip 1"], [70, 45, "Ekip 2"], [45, 88, "Ekip 3"]];
+      const st = t < 0.35 ? "normal" : t < 0.52 ? "warn" : "alarm";
+      const ta = es(t, 0.08, 0.16);
+      teams.forEach(([x, y, n]) => { const [px, py] = P(x, y); ctx.save(); ctx.globalAlpha = ta; ctx.fillStyle = "#1e3a8a"; ctx.strokeStyle = C.model; rr(px - 11, py - 11, 22, 22, 4); ctx.fill(); ctx.stroke(); ctx.restore(); txt(n, px, py + 34, { size: 16, color: C.model, align: "center", alpha: ta }); });
+      if (st === "alarm") { const [a1, b1] = P(75, 28), [a2, b2] = P(70, 45); ctx.save(); ctx.setLineDash([6, 6]); ctx.strokeStyle = C.alarm; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(a1, b1); ctx.lineTo(lerp(a1, a2, es(t, 0.52, 0.6)), lerp(b1, b2, es(t, 0.52, 0.6))); ctx.stroke(); ctx.restore(); txt("Ekip 2 · ~2,7 km", a2 + 18, b2 - 14, { size: 17, color: C.alarm, font: F.m, alpha: es(t, 0.58, 0.64) }); }
+      trs.forEach(([x, y], i) => {
+        const [px, py] = P(x, y); const a = es(t, 0.06 + i * 0.012, 0.12 + i * 0.012);
+        const col = i === 2 ? (st === "normal" ? C.ok : st === "warn" ? C.warn : C.alarm) : C.ok;
+        if (i === 2 && st === "alarm") { const r = 16 + ((t * 12) % 1) * 22; ctx.save(); ctx.globalAlpha = 1 - ((t * 12) % 1); ctx.strokeStyle = C.alarm; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, r, 0, 7); ctx.stroke(); ctx.restore(); }
+        ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(px, py, 13, 0, 7); ctx.fill(); ctx.restore();
+        txt(`TR-0${i + 1}`, px, py - 22, { size: 16, font: F.m, align: "center", alpha: a });
+      });
+      txt("Şematik yerleşim · simülasyon", mx + 16, my + mh - 16, { size: 15, color: C.mute, font: F.m, alpha: ta });
+      // sağ: iki seviyenin gerekçesi
+      const rx = 800;
+      const a1 = es(t, 0.2, 0.3);
+      txt("Tek eşik (haftada ≤1 yanlış uyarı / trafo)", rx, 270, { size: 22, weight: 600, alpha: a1 });
+      const bar = (y, parts, p, a) => { let x = rx; const w = 720; ctx.save(); ctx.globalAlpha = a; parts.forEach(([v, col]) => { const ww = w * v * p; ctx.fillStyle = col; ctx.fillRect(x, y, ww, 34); x += ww; }); ctx.restore(); };
+      bar(290, [[0.77, C.ok], [0.23, C.alarm]], es(t, 0.25, 0.4), a1);
+      txt("Filo haftada ~8 yanlış alarm, panel zamanın %23'ünde kırmızı", rx, 360, { size: 19, color: C.mute, alpha: a1 });
+      const a2 = es(t, 0.42, 0.5);
+      txt("Sıkı tek eşik (≤0,25)", rx, 430, { size: 22, weight: 600, alpha: a2 });
+      txt("3 °C arızaların yalnız %10'u yakalanıyor", rx, 466, { size: 19, color: C.mute, alpha: a2 });
+      const a3 = es(t, 0.62, 0.7);
+      txt("İki seviye: izlemede (hassas) + alarm (sıkı)", rx, 540, { size: 22, weight: 600, alpha: a3, color: C.text });
+      bar(560, [[0.854, C.ok], [0.129, C.warn], [0.017, C.alarm]], es(t, 0.66, 0.8), a3);
+      txt("%85 normal · %13 izlemede · %1,7 alarm (temiz veri)", rx, 630, { size: 19, color: C.mute, alpha: a3 });
+      caption("Sarı, operatöre “şuna bak” der. Kırmızı ekip çıkarır.", es(t, 0.82, 0.9), 820);
+    },
+  },
+  {
+    name: "Sağlık", dur: 10, draw(t) {
+      header(7, "Model kendini de izler", "Haftalık %90 aralık kapsaması. Eşik doğrulama döneminden belirlendi.", es(t, 0, 0.08));
+      const own = [.99, .94, .99, .96, .99, .96, .99, .96, 1, .96, .86, .94, .9, .95, .95, .97, .92];
+      const shift = [.22, .38, .48, .61, .26, .51, .31, .58, .15, .62, .51, .17, .57, .64, .2, .3, .66];
+      const ch = chart(150, 260, 1300, 420, 0, 17, 0, 1);
+      ch.grid(0.25, "", [], es(t, 0.02, 0.1));
+      const m = es(t, 0.5, 0.62);
+      const thrY = ch.sy(0.742);
+      own.forEach((v, i) => {
+        const vv = lerp(v, shift[i], m) * es(t, 0.06 + i * 0.012, 0.14 + i * 0.012);
+        const bad = lerp(v, shift[i], m) < 0.742 && m > 0.5;
+        ctx.fillStyle = bad ? C.alarm : C.ok;
+        const x = ch.sx(i) + 10, w = ch.w / 17 - 20;
+        ctx.fillRect(x, ch.sy(vv), w, ch.sy(0) - ch.sy(vv));
+        if (bad) { ctx.fillStyle = C.alarm; ctx.beginPath(); ctx.moveTo(x + w / 2, ch.sy(vv) - 26); ctx.lineTo(x + w / 2 - 9, ch.sy(vv) - 10); ctx.lineTo(x + w / 2 + 9, ch.sy(vv) - 10); ctx.closePath(); ctx.fill(); }
+      });
+      ctx.save(); ctx.setLineDash([8, 6]); ctx.strokeStyle = C.warn; ctx.lineWidth = 2; ctx.globalAlpha = es(t, 0.15, 0.22); ctx.beginPath(); ctx.moveTo(ch.x, thrY); ctx.lineTo(ch.x + ch.w, thrY); ctx.stroke(); ctx.restore();
+      txt("alt sınır %74", ch.x + ch.w, thrY - 10, { size: 17, color: C.warn, font: F.m, align: "right", alpha: es(t, 0.15, 0.22) });
+      for (let i = 0; i < 17; i += 4) txt(`hf ${i + 1}`, ch.sx(i) + ch.w / 34, ch.y + ch.h + 30, { size: 16, color: C.mute, font: F.m, align: "center", alpha: es(t, 0.05, 0.12) });
+      txt("Değerler gerçek test haftalarından (17 hafta)", 150, 230, { size: 18, color: C.mute, font: F.m, alpha: es(t, 0.05, 0.12) });
+      caption("Kendi trafosunun verisinde: 17 haftanın hiçbirinde uyarı yok.", es(t, 0.2, 0.3) * (1 - es(t, 0.45, 0.5)), 790);
+      caption("Aynı model başka bir trafonun verisine uygulanınca: 17 haftanın 17'sinde uyarı.", es(t, 0.62, 0.72), 790, C.alarm);
+      txt("Diğer göstergeler: sistematik sapma, yük dağılımı kayması", 80, 860, { size: 20, color: C.mute, alpha: es(t, 0.75, 0.85) });
+    },
+  },
+  {
+    name: "Edge", dur: 9, draw(t) {
+      header(8, "Telefona sığacak kadar küçük", "Model ONNX'e aktarıldı ve 8 bit tamsayıya nicemlendi.", es(t, 0, 0.08));
+      const rows = [
+        ["PyTorch", 64.2, "0,57 ms", "1,149 °C", C.mute],
+        ["ONNX fp32", 65.4, "0,20 ms", "1,149 °C", C.model],
+        ["ONNX int8", 26.0, "0,23 ms", "1,092 °C", C.ok],
+      ];
+      txt("Boyut", 420, 270, { size: 18, color: C.mute, font: F.m, alpha: es(t, 0.05, 0.1) });
+      txt("Gecikme", 1060, 270, { size: 18, color: C.mute, font: F.m, alpha: es(t, 0.05, 0.1) });
+      txt("6 sa hata", 1250, 270, { size: 18, color: C.mute, font: F.m, alpha: es(t, 0.05, 0.1) });
+      rows.forEach(([n, kb, ms, mae, col], i) => {
+        const a = es(t, 0.08 + i * 0.12, 0.18 + i * 0.12), y = 320 + i * 110;
+        txt(n, 80, y + 30, { size: 30, font: F.d, weight: 700, alpha: a });
+        ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = col; rr(420, y, (kb / 66) * 440 * es(t, 0.1 + i * 0.12, 0.25 + i * 0.12), 44, 6); ctx.fill(); ctx.restore();
+        txt(`${String(kb).replace(".", ",")} KB`, 420 + (kb / 66) * 440 + 14, y + 30, { size: 22, font: F.m, alpha: a });
+        txt(ms, 1060, y + 30, { size: 26, font: F.m, alpha: a, color: col === C.mute ? C.text : col });
+        txt(mae, 1250, y + 30, { size: 26, font: F.m, alpha: a });
+      });
+      txt("Dizüstü CPU, tek iş parçacığı, tek pencere, 1000 çalıştırma", 80, 690, { size: 19, color: C.mute, font: F.m, alpha: es(t, 0.45, 0.55) });
+      caption("Küçültülmüş model yeni bir modeldir. Alarm kuralı onun için yeniden seçilmezse 3 °C tespit %75'ten %50'ye düşüyor; yeniden seçilince %75'e dönüyor.", es(t, 0.6, 0.72), 770, C.text, 26);
+    },
+  },
+  {
+    name: "Özet", dur: 8, draw(t) {
+      const steps = ["Veri", "Tahmin", "Aralık", "Uyarı", "Açıklama", "Filo", "Sağlık", "Edge"];
+      txt("Trafo Filo İzleme", 80, 230, { size: 88, font: F.d, weight: 800, alpha: es(t, 0, 0.12) });
+      wrap("Yağ sıcaklığını tahmin eden, beklenmeyen ısınmayı iki seviyede uyaran, nedenini gösteren ve kendi güvenilirliğini izleyen uçtan uca sistem.", 80, 290, 1200, { size: 28, color: C.mute, alpha: es(t, 0.05, 0.15) });
+      const y = 480, x0 = 80, dx = 180;
+      steps.forEach((s, i) => {
+        const a = es(t, 0.15 + i * 0.05, 0.22 + i * 0.05);
+        ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = i === 3 ? C.warn : C.model; ctx.beginPath(); ctx.arc(x0 + i * dx + 10, y, 10, 0, 7); ctx.fill(); ctx.restore();
+        if (i < steps.length - 1) { ctx.save(); ctx.globalAlpha = a; ctx.strokeStyle = C.line; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x0 + i * dx + 26, y); ctx.lineTo(x0 + (i + 1) * dx - 6, y); ctx.stroke(); ctx.restore(); }
+        txt(s, x0 + i * dx + 10, y + 46, { size: 22, weight: 600, align: "center", alpha: a });
+      });
+      const b = es(t, 0.6, 0.72);
+      txt("PyTorch · ONNX Runtime · FastAPI · Next.js · Flutter · Docker", 80, 640, { size: 22, font: F.m, color: C.text, alpha: b });
+      txt("Simülasyon: 8 trafo, 2 gerçek açık veri serisinden (ETDataset, CC BY-ND 4.0). Arızalar yapay olarak eklendi.", 80, 690, { size: 20, color: C.mute, alpha: b });
+    },
+  },
+];
+
+// ---------- zaman çizelgesi ----------
+const starts = []; let total = 0;
+for (const s of scenes) { starts.push(total); total += s.dur; }
+const FADE = 0.45;
+
+function renderAt(T) {
+  T = clamp(T, 0, total - 1e-3);
+  let i = scenes.length - 1;
+  while (starts[i] > T) i--;
+  const s = scenes[i], local = T - starts[i];
+  ctx.save();
+  ctx.fillStyle = C.ink; ctx.fillRect(0, 0, W, H);
+  const glow = ctx.createRadialGradient(W * 0.8, -100, 50, W * 0.8, -100, 900);
+  glow.addColorStop(0, "#5b9cff14"); glow.addColorStop(1, "#5b9cff00");
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = Math.min(1, local / FADE, (s.dur - local) / FADE + (i === scenes.length - 1 ? 1 : 0));
+  s.draw(local / s.dur);
+  ctx.restore();
+  return i;
+}
+window.renderAt = renderAt;            // video dışa aktarımı için: renderAt(saniye)
+window.TOTAL_SECONDS = total;
+
+// ---------- oynatma ----------
+const playBtn = document.getElementById("play"), fillEl = document.getElementById("fill"), timeEl = document.getElementById("time");
+const track = document.getElementById("track"), sceneBox = document.getElementById("scenes");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let T = 0, playing = !reduce, last = null, current = -1;
+scenes.forEach((s, i) => {
+  const b = document.createElement("button"); b.textContent = s.name; b.id = "scene-" + i;
+  b.addEventListener("click", () => seek(starts[i] + 0.01)); sceneBox.appendChild(b);
+});
+const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+function update() {
+  const i = renderAt(T);
+  if (i !== current) { current = i; [...sceneBox.children].forEach((b, j) => b.setAttribute("aria-current", j === i)); }
+  fillEl.style.width = (T / total) * 100 + "%";
+  timeEl.textContent = `${fmt(T)} / ${fmt(total)}`;
+  track.setAttribute("aria-valuenow", Math.round(T));
+  playBtn.textContent = playing ? "Durdur" : "Oynat";
+}
+function seek(x) { T = clamp(x, 0, total - 0.01); last = null; update(); }
+function loop(now) {
+  if (playing) {
+    if (last !== null) T += (now - last) / 1000;
+    last = now;
+    if (T >= total) T = 0;
+    update();
+  } else last = null;
+  requestAnimationFrame(loop);
+}
+playBtn.addEventListener("click", () => { playing = !playing; update(); });
+track.addEventListener("click", (e) => { const r = track.getBoundingClientRect(); seek(((e.clientX - r.left) / r.width) * total); });
+document.addEventListener("keydown", (e) => {
+  if (e.code === "Space") { e.preventDefault(); playing = !playing; update(); }
+  if (e.key === "ArrowRight") seek(starts[Math.min(scenes.length - 1, current + 1)] + 0.01);
+  if (e.key === "ArrowLeft") seek(starts[Math.max(0, current - 1)] + 0.01);
+});
+
+const start = () => {
+  if (reduce) T = starts[0] + scenes[0].dur * 0.95;   // hareket istemeyenlere sahnenin bitmiş hâli
+  update(); requestAnimationFrame(loop);
+};
+(document.fonts ? Promise.race([document.fonts.load('700 52px "Archivo"').then(() => document.fonts.ready), new Promise((r) => setTimeout(r, 1500))]) : Promise.resolve()).then(start);
+</script>
