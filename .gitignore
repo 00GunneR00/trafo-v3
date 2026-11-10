@@ -11,3 +11,9 @@ panel/tsconfig.tsbuildinfo
 panel/next-env.d.ts
 mobile_bench/build/
 mobile_bench/.dart_tool/
+
+# Yerel çalışma belgeleri (public depoya girmez)
+PROJE_PLANI.pdf
+A0_CALISMA.md
+PROJE_REHBERI.md
+CLAUDE.md
